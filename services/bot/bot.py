@@ -3,6 +3,7 @@ import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackQueryHandler, CommandHandler
 from config import BOT_TOKEN, API_URL, CATEGORIES, TOPICS_BY_CATEGORY
+from services.api.app.ai_client import logger
 from services.bot.helpers import escape_markdown_v2, clean_text
 from telegram.ext import MessageHandler, filters
 
@@ -38,7 +39,15 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE):
         timeout=10
     )
 
-    data = response.json()
+    try:
+        response.raise_for_status()  # Проверяет статус 2xx
+        data = response.json()
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP {e.response.status_code}: {e.response.text[:200]}")
+        raise
+    except requests.exceptions.JSONDecodeError as e:
+        logger.error(f"JSON error. Status: {response.status_code}, Content: {repr(response.text[:200])}")
+        raise ValueError("Invalid JSON from API")
 
     question_text = clean_text(data.get("question", "Ошибка генерации"))
     answer_text = clean_text(data.get("answer", "Нет ответа"))
@@ -69,7 +78,15 @@ async def user_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
         timeout=15
     )
 
-    data = response.json()
+    try:
+        response.raise_for_status()  # Проверяет статус 2xx
+        data = response.json()
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP {e.response.status_code}: {e.response.text[:200]}")
+        raise
+    except requests.exceptions.JSONDecodeError as e:
+        logger.error(f"JSON error. Status: {response.status_code}, Content: {repr(response.text[:200])}")
+        raise ValueError("Invalid JSON from API")
 
     answer = clean_text(data.get("answer", "Нет ответа"))
     answer = escape_markdown_v2(answer)

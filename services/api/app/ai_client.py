@@ -24,8 +24,8 @@ def generate_question(prompt_text: str) -> dict:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": json_prompt}],  # ← ИСПРАВЛЕНО
-            max_tokens=300,
-            temperature=0.1
+            max_tokens=200,
+            temperature=0.3
         )
 
         content = response.choices[0].message.content.strip()
@@ -41,8 +41,8 @@ def generate_question(prompt_text: str) -> dict:
         logger.error(f"API error: {e}")
         raise ValueError("Failed to generate question")
 
-    question = data.get("question", "").strip()[:200]
-    answer = re.sub(r"[#*_`]", "", data.get("answer", "")).strip()[:300]
+    question = data.get("question", "").strip()
+    answer = re.sub(r"[#*_`]", "", data.get("answer", "")).strip()
 
     if not question or not answer:
         raise ValueError("Missing question or answer")

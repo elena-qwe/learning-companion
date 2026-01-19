@@ -28,13 +28,13 @@ def help_session():
     }
 
 @app.get("/question/generate")
-def question_generate(topic: str, level: str = "junior"):
+def question_generate(topic: str, question: str | None = None, level: str = "junior"):
     mode = choose_mode(topic, None, level)
-    prompt = build_prompt(topic, mode, level)
+    prompt = build_prompt(topic, mode, level, question)
     return generate_question(prompt)
 
 @app.post("/question/ask")
 def ask_question(topic: str, question: str, level: str = "junior"):
     mode = choose_mode(topic, question, level)
-    prompt = build_prompt(topic, mode, question, level)
+    prompt = build_prompt(topic, mode, level, question)
     return generate_question(prompt)
