@@ -1,58 +1,50 @@
 import json
-import re
 import logging
-from openai import OpenAI
+import re
 
+from openai import OpenAI
 from services.api.app.config import api_key
 
+logger = logging.getLogger(__name__)  # Глобальный логгер
+client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key
-)
 
 def generate_question(prompt_text: str) -> dict:
-    logging.basicConfig(
-        filename="prompts.log",
-        level=logging.INFO,
-        format="%(asctime)s | %(message)s",
-    )
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt_text}],
-        max_tokens=200,
-        temperature=0.2
-    )
+    # Улучшенный промпт
+    json_prompt = f"""Ответь ТОЛЬКО валидным JSON в следующем формате, без дополнительного текста:
 
+{{
+  "question": "твой вопрос здесь", 
+  "answer": "подробное объяснение здесь"
+}}
 
-
-    content = response.choices[0].message.content.strip()
-
-    match = re.search(r"\{.*\}", content, re.DOTALL)
-    if not match:
-        raise ValueError("AI response does not contain JSON")
-
-    json_str = match.group(0)
+Тема: {prompt_text}"""
 
     try:
-        data = json.loads(json_str)
-    except json.JSONDecodeError:
-        raise ValueError("Invalid JSON from AI")
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": json_prompt}],  # ← ИСПРАВЛЕНО
+            max_tokens=300,
+            temperature=0.1
+        )
 
-    question = data.get("question", "").strip()
-    answer = data.get("answer", "").strip()
+        content = response.choices[0].message.content.strip()
+        logger.info(f"AI response: {repr(content[:200])}")
+
+        # Простой парсинг ВСЕГО контента
+        data = json.loads(content)
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON error: {e}. Content: {repr(content[:300])}")
+        raise ValueError("AI response is not valid JSON")
+    except Exception as e:
+        logger.error(f"API error: {e}")
+        raise ValueError("Failed to generate question")
+
+    question = data.get("question", "").strip()[:200]
+    answer = re.sub(r"[#*_`]", "", data.get("answer", "")).strip()[:300]
 
     if not question or not answer:
         raise ValueError("Missing question or answer")
 
-    question = question[:200]
-    answer = answer[:300]
-
-    answer = re.sub(r"[#*_`]", "", answer)
-    answer = " ".join(answer.split())
-
-    return {
-        "question": question,
-        "answer": answer
-    }
+    return {"question": question, "answer": answer}
