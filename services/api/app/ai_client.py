@@ -1,9 +1,11 @@
 import json
 import re
-
+import logging
 from openai import OpenAI
-import os
+
 from services.api.app.config import api_key
+
+
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -11,12 +13,19 @@ client = OpenAI(
 )
 
 def generate_question(prompt_text: str) -> dict:
+    logging.basicConfig(
+        filename="prompts.log",
+        level=logging.INFO,
+        format="%(asctime)s | %(message)s",
+    )
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt_text}],
         max_tokens=200,
         temperature=0.2
     )
+
+
 
     content = response.choices[0].message.content.strip()
 
